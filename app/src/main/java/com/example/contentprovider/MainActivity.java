@@ -4,6 +4,8 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -27,57 +29,52 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-    ListView lv;
+    RecyclerView main_rcv;
+    ContactAdapter contactAdapter;
     ContentResolver contentResolver;
-    @SuppressLint("Range")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        lv = findViewById(R.id.lv);
+
+        main_rcv = findViewById(R.id.main_rcv);
+        contactAdapter = new ContactAdapter(MainActivity.this);
+
+        GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 1);
+        main_rcv.setLayoutManager(gridLayoutManager);
+        contactAdapter.setData(getList());
+        main_rcv.setAdapter(contactAdapter);
+
+
+    }
+
+    @SuppressLint("Range")
+    public List<Contact> getList() {
+        List<Contact> list = new ArrayList<>();
 
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_CONTACTS}, 100);
         }
-
-
         contentResolver = getContentResolver();
-
-        List<String> list = new ArrayList<>();
-        List<String> phoneList = new ArrayList<>();
 
         Cursor cursor = contentResolver.query(ContactsContract.Contacts.CONTENT_URI,
                 new String[]{ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts._ID},
                 null, null, null);
-
         while(cursor.moveToNext()) {
-
+            String phone = "";
             long id = cursor.getLong(cursor.getColumnIndex(ContactsContract.Contacts._ID));
             Cursor c = contentResolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, new String[]{ContactsContract.CommonDataKinds.Phone.NUMBER},
                     ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?", new String[]{String.valueOf(id)}, null);
-            String phone = "";
+
             while(c.moveToNext()) {
                 phone += c.getString(c.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)) + "   ";
 
             }
-            phoneList.add(phone);
-            list.add(cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)));
+            list.add(new Contact(cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)), phone));
         }
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, list);
-        lv.setAdapter(adapter);
 
-        lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                Toast.makeText(MainActivity.this, list.get(i), Toast.LENGTH_SHORT).show();
-                Intent intent = new Intent(MainActivity.this, DetailActivity.class);
-                intent.putExtra("name", list.get(i));
-                intent.putExtra("phone", phoneList.get(i));
-                startActivity(intent);
-            }
-        });
-
+        return list;
     }
 
 }
